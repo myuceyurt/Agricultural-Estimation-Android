@@ -1,0 +1,45 @@
+# =========================================
+# Android Studio & IDE Dosyaları
+# =========================================
+# Proje ve workspace ayarları, her geliştiricide farklıdır.
+.idea/
+
+# Gradle Wrapper dosyaları (paylaşılması gerekenler hariç)
+.gradle
+gradle-app.setting
+
+# =========================================
+# Derleme (Build) Çıktıları
+# =========================================
+# Tüm 'build' klasörlerini yok say (hem ana hem de alt modüllerdeki)
+**/build
+
+# =========================================
+# Yerel ve Hassas Bilgiler
+# =========================================
+# SDK yolu gibi yerel bilgileri ve API anahtarlarını içerir. ASLA paylaşılmamalı.
+local.properties
+
+# =========================================
+# APK ve Diğer Çıktı Dosyaları
+# =========================================
+*.apk
+*.aab
+*.jar
+*.war
+
+# =========================================
+# İşletim Sistemi Dosyaları
+# =========================================
+.DS_Store
+Thumbs.db
+
+# =========================================
+# Diğer
+# =========================================
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Lint raporları
+lint/
