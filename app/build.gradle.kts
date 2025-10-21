@@ -1,3 +1,12 @@
+import java.util.Properties
+
+val properties = Properties()
+try {
+    properties.load(project.rootProject.file("local.properties").inputStream())
+} catch (e: Exception) {
+    // TODO: Handle error
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -16,6 +25,8 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["mapsApiKey"] = properties.getProperty("MAPS_API_KEY", "")
     }
 
     buildTypes {
@@ -56,4 +67,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation("com.google.maps.android:maps-compose:2.11.4")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
 }
