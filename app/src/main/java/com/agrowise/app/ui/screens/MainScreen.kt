@@ -12,7 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,6 +40,9 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -51,6 +54,9 @@ fun MainScreen() {
     var selectedBottomItemIndex by remember { mutableIntStateOf(0) }
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     val defaultLocation = remember { LatLng(41.0082, 28.9784) } // İstanbul
+
+    var polygonPoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
+    var isAreaSelectionMode by remember { mutableStateOf(false) }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultLocation, 18f)
@@ -121,6 +127,7 @@ fun MainScreen() {
                     if (addresses?.isNotEmpty() == true) {
                         val location = addresses[0]
                         val latLng = LatLng(location.latitude, location.longitude)
+                        userLocation = latLng
                         cameraPositionState.animate(
                             CameraUpdateFactory.newLatLngZoom(latLng, 12f)
                         )
@@ -128,7 +135,6 @@ fun MainScreen() {
                     }
                 } catch (e: Exception) {
                     Log.e("MainScreen", "Error searching location: ${e.message}")
-                    // Optionally, show a toast or a snackbar to the user
                 }
             }
         }
@@ -136,14 +142,12 @@ fun MainScreen() {
 
     val navItems = listOf(
         BottomNavItem("Harita", Icons.Default.LocationOn),
-        BottomNavItem("Market", Icons.Default.ShoppingCart),
-        BottomNavItem("Tahliller", Icons.Default.AccountBox),
+        BottomNavItem("Analizler", Icons.Default.AccountBox),
         BottomNavItem("Profil", Icons.Default.Person)
     )
 
     Box(
         modifier = Modifier
-            .windowInsetsPadding(WindowInsets.safeDrawing)
             .fillMaxSize()
     ) {
         GoogleMap(
@@ -152,44 +156,82 @@ fun MainScreen() {
             uiSettings = MapUiSettings(
                 zoomControlsEnabled = false,
                 mapToolbarEnabled = false,
-                myLocationButtonEnabled = false
+                myLocationButtonEnabled = false,
+                scrollGesturesEnabled = !isAreaSelectionMode,
+                zoomGesturesEnabled = !isAreaSelectionMode,
+                rotationGesturesEnabled = !isAreaSelectionMode,
+                tiltGesturesEnabled = !isAreaSelectionMode
             ),
             properties = MapProperties(
                 isMyLocationEnabled = userLocation != null,
                 mapType = MapType.HYBRID,
                 isBuildingEnabled = true
-            )
-        )
-
-        LocationSearchBar(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 8.dp),
-            query = query,
-            currentLocation = currentLocation,
-            onQueryChange = { query = it },
-            onClearClick = { query = "" },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Text,
-                imeAction = ImeAction.Search
             ),
-            keyboardActions = KeyboardActions(
-                onSearch = { onSearch(query) }
+            onMapClick = { latLng ->
+                if(isAreaSelectionMode){
+                    polygonPoints = polygonPoints + latLng
+                }
+
+            }
+        ){
+            polygonPoints.forEach { point ->
+                Marker(
+                    state = MarkerState(position = point),
+                    title = "Farm Point ${polygonPoints.indexOf(point) + 1}"
+                )
+            }
+
+            if (polygonPoints.size > 1) {
+                Polygon(
+                    points = polygonPoints,
+                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                    strokeColor = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 5f
+                )
+            }
+        }
+
+        if(!isAreaSelectionMode){
+            LocationSearchBar(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .windowInsetsPadding(WindowInsets.safeDrawing) // Use windowInsetsPadding for system bars
+                    .padding(top = 8.dp),
+                query = query,
+                currentLocation = currentLocation,
+                onQueryChange = { query = it },
+                onClearClick = { query = "" },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = { onSearch(query) }
+                )
             )
-        )
+        }
 
         SelectAreaButton(
             modifier = Modifier
                 .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing) // Use windowInsetsPadding for system bars
                 .padding(top = 72.dp, end = 16.dp),
-            onClick = { /* TODO: Handle area selection */ }
+            onClick = {
+                polygonPoints = emptyList()
+                isAreaSelectionMode = !isAreaSelectionMode
+            }
         )
 
-        AppBottomBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            items = navItems,
-            selectedItemIndex = selectedBottomItemIndex,
-            onItemSelected = { selectedBottomItemIndex = it }
-        )
+        if(!isAreaSelectionMode){
+            AppBottomBar(
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.safeDrawing) // Use windowInsetsPadding for system bars
+                    .align(Alignment.BottomCenter),
+                items = navItems,
+                selectedItemIndex = selectedBottomItemIndex,
+                onItemSelected = { selectedBottomItemIndex = it }
+            )
+        }
+
     }
 }
