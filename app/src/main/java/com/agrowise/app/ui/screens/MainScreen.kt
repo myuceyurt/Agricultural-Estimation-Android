@@ -13,15 +13,10 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,8 +29,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agrowise.app.permissions.LocationPermissionHandler
-import com.agrowise.app.ui.components.AppBottomBar
-import com.agrowise.app.ui.components.BottomNavItem
 import com.agrowise.app.ui.components.LocationSearchBar
 import com.agrowise.app.ui.components.SelectAreaButton
 import com.agrowise.app.ui.viewmodel.MainViewModel
@@ -52,9 +45,11 @@ import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
 
 @Composable
-fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
+fun MainScreen(
+    viewModel: MainViewModel = hiltViewModel(),
+    onAreaSelectionModeChange: (Boolean) -> Unit
+) {
     var query by remember { mutableStateOf("") }
-    var selectedBottomItemIndex by remember { mutableIntStateOf(0) }
     var polygonPoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     var isAreaSelectionMode by remember { mutableStateOf(false) }
 
@@ -86,12 +81,6 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
             viewModel.getAddressFromLocation(it)
         }
     }
-
-    val navItems = listOf(
-        BottomNavItem("Harita", Icons.Default.LocationOn),
-        BottomNavItem("Analizler", Icons.Default.AccountBox),
-        BottomNavItem("Profil", Icons.Default.Person)
-    )
 
     Box(
         modifier = Modifier
@@ -177,6 +166,7 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
             isSelectionMode = isAreaSelectionMode,
             onClick = {
                 isAreaSelectionMode = !isAreaSelectionMode
+                onAreaSelectionModeChange(isAreaSelectionMode)
                 if (!isAreaSelectionMode) {
                     polygonPoints = emptyList()
                 }
@@ -188,36 +178,14 @@ fun MainScreen(viewModel: MainViewModel = hiltViewModel()) {
                     "${centerPoint.latitude}, ${centerPoint.longitude}",
                     Toast.LENGTH_LONG
                 ).show()
-
                 isAreaSelectionMode = false
+                onAreaSelectionModeChange(isAreaSelectionMode)
                 polygonPoints = emptyList()
             },
             onDeleteClick = {
                 polygonPoints = emptyList()
             }
         )
-
-        AnimatedVisibility(
-            visible = !isAreaSelectionMode,
-            enter = slideInVertically(
-                initialOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
-            ),
-            exit = slideOutVertically(
-                targetOffsetY = { fullHeight -> fullHeight },
-                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
-            ),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-        ) {
-            AppBottomBar(
-                modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.safeDrawing),
-                items = navItems,
-                selectedItemIndex = selectedBottomItemIndex,
-                onItemSelected = { selectedBottomItemIndex = it }
-            )
-        }
     }
 }
 

@@ -5,7 +5,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,10 +15,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agrowise.app.ui.navigation.Screen
 
 data class BottomNavItem(
     val label: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val route: String
 )
 
 @Composable
@@ -70,10 +71,9 @@ fun AppBottomBar(
 @Composable
 fun AppBottomBarPreview() {
     val navItems = listOf(
-        BottomNavItem("Harita", Icons.Default.LocationOn),
-        BottomNavItem("My Car", Icons.Default.ShoppingCart),
-        BottomNavItem("Bookings", Icons.Outlined.AccountBox),
-        BottomNavItem("Profile", Icons.Default.Person)
+        BottomNavItem("Harita", Icons.Default.LocationOn, Screen.Main.route),
+        BottomNavItem("Analizler", Icons.Outlined.AccountBox, Screen.Analyses.route),
+        BottomNavItem("Profil", Icons.Default.Person, Screen.Profile.route)
     )
 
     var selectedIndex by remember { mutableStateOf(0) }
