@@ -1,3 +1,5 @@
+package com.agrowise.app.ui.components
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
@@ -8,10 +10,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,16 +22,12 @@ fun SelectAreaButton(
     onAddClick: () -> Unit,
     onDeleteClick: () -> Unit,
     isAddActive: Boolean = true,
-    isDeleteActive: Boolean = true
+    isDeleteActive: Boolean = true,
+    isSelectionMode: Boolean = false
 ) {
-    var expanded by remember { mutableStateOf(false) }
-
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         IconButton(
-            onClick = {
-                onClick()
-                expanded = !expanded
-            },
+            onClick = onClick,
             colors = IconButtonDefaults.iconButtonColors(
                 containerColor = Color.White
             )
@@ -44,14 +38,11 @@ fun SelectAreaButton(
             )
         }
 
-        AnimatedVisibility(visible = expanded) {
+        AnimatedVisibility(visible = isSelectionMode) {
             Column {
                 IconButton(
                     enabled = isAddActive,
-                    onClick = {
-                        onAddClick()
-                        expanded = false
-                    },
+                    onClick = onAddClick,
                     colors = IconButtonDefaults.iconButtonColors(
                         containerColor = Color.White,
                         contentColor = Color.Black,
@@ -66,9 +57,7 @@ fun SelectAreaButton(
                 }
                 IconButton(
                     enabled = isDeleteActive,
-                    onClick = {
-                        onDeleteClick()
-                    },
+                    onClick = onDeleteClick,
                     colors = IconButtonDefaults.iconButtonColors(
                         containerColor = Color.White,
                         contentColor = Color.Black,
@@ -86,43 +75,32 @@ fun SelectAreaButton(
     }
 }
 
-@Preview(name = "Default State", showBackground = true)
+@Preview(name = "Default State")
 @Composable
 private fun SelectAreaButtonPreview() {
     SelectAreaButton(onClick = {}, onAddClick = {}, onDeleteClick = {})
 }
 
-@Preview(name = "Expanded State", showBackground = true)
+@Preview(name = "Expanded State")
 @Composable
 private fun SelectAreaButtonExpandedPreview() {
-    var expanded by remember { mutableStateOf(true) }
+    SelectAreaButton(
+        onClick = {},
+        onAddClick = {},
+        onDeleteClick = {},
+        isSelectionMode = true
+    )
+}
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(
-            onClick = { expanded = !expanded },
-            colors = IconButtonDefaults.iconButtonColors(containerColor = Color.White)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Create,
-                contentDescription = "Select Area or Change Layer"
-            )
-        }
-
-        AnimatedVisibility(visible = expanded) {
-            Column {
-                IconButton(
-                    onClick = {},
-                    colors = IconButtonDefaults.iconButtonColors(containerColor = Color.White)
-                ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Add Area")
-                }
-                IconButton(
-                    onClick = {},
-                    colors = IconButtonDefaults.iconButtonColors(containerColor = Color.White)
-                ) {
-                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Area")
-                }
-            }
-        }
-    }
+@Preview(name = "Expanded State(Disabled)")
+@Composable
+private fun SelectAreaButtonExpandedDisabledPreview() {
+    SelectAreaButton(
+        onClick = {},
+        onAddClick = {},
+        onDeleteClick = {},
+        isSelectionMode = true,
+        isAddActive = false,
+        isDeleteActive = false
+    )
 }
