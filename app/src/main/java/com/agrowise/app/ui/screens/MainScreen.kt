@@ -1,5 +1,12 @@
 import android.location.Geocoder
 import android.util.Log
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -66,6 +73,11 @@ fun MainScreen() {
     val geocoder = remember { Geocoder(context, Locale.getDefault()) }
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
+
+    val animatedTopPadding by animateDpAsState(
+        targetValue = if (isAreaSelectionMode) 8.dp else 72.dp,
+        animationSpec = tween(500, easing = FastOutSlowInEasing)
+    )
 
 
     val onPermissionGranted: () -> Unit = {
@@ -157,10 +169,6 @@ fun MainScreen() {
                 zoomControlsEnabled = false,
                 mapToolbarEnabled = false,
                 myLocationButtonEnabled = false,
-                scrollGesturesEnabled = !isAreaSelectionMode,
-                zoomGesturesEnabled = !isAreaSelectionMode,
-                rotationGesturesEnabled = !isAreaSelectionMode,
-                tiltGesturesEnabled = !isAreaSelectionMode
             ),
             properties = MapProperties(
                 isMyLocationEnabled = userLocation != null,
@@ -191,12 +199,22 @@ fun MainScreen() {
             }
         }
 
-        if(!isAreaSelectionMode){
+        AnimatedVisibility(
+            visible = !isAreaSelectionMode,
+            enter = slideInVertically(
+                initialOffsetY = { fullHeight -> -fullHeight * 2 },
+                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { fullHeight -> -fullHeight * 2 },
+                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+            ),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(top = 8.dp)
+        ) {
             LocationSearchBar(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .windowInsetsPadding(WindowInsets.safeDrawing) // Use windowInsetsPadding for system bars
-                    .padding(top = 8.dp),
                 query = query,
                 currentLocation = currentLocation,
                 onQueryChange = { query = it },
@@ -213,25 +231,61 @@ fun MainScreen() {
 
         SelectAreaButton(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.safeDrawing) // Use windowInsetsPadding for system bars
-                .padding(top = 72.dp, end = 16.dp),
+                .align(if (isAreaSelectionMode) Alignment.TopEnd else Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(top = animatedTopPadding, end = 16.dp),
+            isAddActive = polygonPoints.size >= 3,
+            isDeleteActive = polygonPoints.isNotEmpty(),
             onClick = {
-                polygonPoints = emptyList()
                 isAreaSelectionMode = !isAreaSelectionMode
+                if (!isAreaSelectionMode) {
+                    polygonPoints = emptyList()
+                }
+            },
+            onAddClick = {
+                val centerPoint = getCenterPoint(polygonPoints)
+                Toast.makeText(
+                    context,
+                    "${centerPoint.latitude}, ${centerPoint.longitude}",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                isAreaSelectionMode = false
+                polygonPoints = emptyList()
+            },
+            onDeleteClick = {
+                polygonPoints = emptyList()
             }
         )
 
-        if(!isAreaSelectionMode){
+        AnimatedVisibility(
+            visible = !isAreaSelectionMode,
+            enter = slideInVertically(
+                initialOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { fullHeight -> fullHeight },
+                animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+        ) {
             AppBottomBar(
                 modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.safeDrawing) // Use windowInsetsPadding for system bars
-                    .align(Alignment.BottomCenter),
+                    .windowInsetsPadding(WindowInsets.safeDrawing),
                 items = navItems,
                 selectedItemIndex = selectedBottomItemIndex,
                 onItemSelected = { selectedBottomItemIndex = it }
             )
         }
-
     }
+}
+
+fun getCenterPoint(polygonPoints: List<LatLng>): LatLng {
+    val centerLat = polygonPoints.map { it.latitude }.average()
+    val centerLng = polygonPoints.map { it.longitude }.average()
+    val centerPoint = LatLng(centerLat, centerLng)
+
+    return centerPoint
 }
