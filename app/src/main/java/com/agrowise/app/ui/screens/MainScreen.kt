@@ -35,6 +35,7 @@ import com.agrowise.app.ui.viewmodel.MainViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.SphericalUtil
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
@@ -43,6 +44,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
+import java.text.NumberFormat
 
 @Composable
 fun MainScreen(
@@ -173,9 +175,17 @@ fun MainScreen(
             },
             onAddClick = {
                 val centerPoint = getCenterPoint(polygonPoints)
+                val area = calculatePolygonArea(polygonPoints)
+                val formattedArea = NumberFormat.getNumberInstance().apply {
+                    maximumFractionDigits = 2
+                }.format(area)
+
+                val formattedLat = String.format("%.2f", centerPoint.latitude)
+                val formattedLon = String.format("%.2f", centerPoint.longitude)
+
                 Toast.makeText(
                     context,
-                    "${centerPoint.latitude}, ${centerPoint.longitude}",
+                    "Merkez: $formattedLat, $formattedLon\nAlan: $formattedArea dönüm",
                     Toast.LENGTH_LONG
                 ).show()
                 isAreaSelectionMode = false
@@ -195,4 +205,9 @@ fun getCenterPoint(polygonPoints: List<LatLng>): LatLng {
     val centerPoint = LatLng(centerLat, centerLng)
 
     return centerPoint
+}
+
+fun calculatePolygonArea(polygonPoints: List<LatLng>): Double {
+    val areaInSquareMeters = SphericalUtil.computeArea(polygonPoints)
+    return areaInSquareMeters / 1000
 }
