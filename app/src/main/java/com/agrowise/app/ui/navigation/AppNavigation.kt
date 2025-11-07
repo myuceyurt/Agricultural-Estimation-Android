@@ -29,8 +29,10 @@ import androidx.navigation.compose.composable
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.agrowise.app.ui.components.AppBottomBar
 import com.agrowise.app.ui.components.BottomNavItem
-import com.agrowise.app.ui.screens.AnalysesScreen
+import com.agrowise.app.ui.screens.AnalyzesScreen
 import com.agrowise.app.ui.screens.ProfileScreen
+import com.agrowise.app.ui.viewmodel.NavigationUiEvent
+import com.agrowise.app.ui.viewmodel.NavigationViewModel
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -96,7 +98,7 @@ fun AppNavigation(
                     )
                 }
             ) {
-                AnalysesScreen()
+                AnalyzesScreen()
             }
             composable(
                 Screen.Profile.route,

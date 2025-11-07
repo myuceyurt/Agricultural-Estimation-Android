@@ -1,4 +1,4 @@
-package com.agrowise.app.ui.navigation
+package com.agrowise.app.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
