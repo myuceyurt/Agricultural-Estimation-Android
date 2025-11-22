@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -104,8 +103,25 @@ fun MainScreen(
         }
     }
 
-    val selectionColor = MaterialTheme.colorScheme.primary
-    val selectionFillColor = selectionColor.copy(alpha = 0.3f)
+    val pulseTransition = rememberInfiniteTransition(label = "area_pulse")
+
+    val pulseAlpha by pulseTransition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.65f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    val pulseStrokeWidth by pulseTransition.animateFloat(
+        initialValue = 15f,
+        targetValue = 20f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
 
     Box(
         modifier = Modifier
@@ -129,9 +145,10 @@ fun MainScreen(
             if (polygonPoints.size > 1) {
                 Polygon(
                     points = polygonPoints,
-                    fillColor = selectionFillColor,
-                    strokeColor = selectionColor,
-                    strokeWidth = 5f
+                    fillColor = Color.White.copy(alpha = pulseAlpha),
+                    strokeColor = Color.White,
+                    strokeWidth = pulseStrokeWidth,
+                    zIndex = 1f
                 )
             }
         }
@@ -244,19 +261,15 @@ fun MainScreen(
                             }
                         }
 
-                        val minWidth = 4.dp.toPx()
-                        val maxWidth = 7.dp.toPx()
-                        val strokeWidth = minWidth + (maxWidth - minWidth) * glowProgress
-
-                        val minAlpha = 0.95f
-                        val maxAlpha = 1.2f
-                        val coreAlpha = minAlpha + (maxAlpha - minAlpha) * glowProgress
+                        val minAlpha = 0.8f
+                        val maxAlpha = 1.0f
+                        val currentAlpha = minAlpha + (maxAlpha - minAlpha) * glowProgress
 
                         drawPath(
                             path = path,
-                            color = Color.White.copy(alpha = coreAlpha),
+                            color = Color.White.copy(alpha = currentAlpha),
                             style = Stroke(
-                                width = strokeWidth,
+                                width = pulseStrokeWidth,
                                 cap = StrokeCap.Round,
                                 join = StrokeJoin.Round
                             )
@@ -284,18 +297,27 @@ fun MainScreen(
             LocationSearchBar(
                 query = query,
                 currentLocation = viewModel.currentLocation,
-                onQueryChange = { query = it },
-                onClearClick = { query = "" },
+                onQueryChange = { newQuery ->
+                    query = newQuery
+                },
+                allLocations = viewModel.allLocations,
+                onSuggestionClick = { item ->
+                    viewModel.onLocationSuggestionSelected(item)
+                    focusManager.clearFocus()
+                },
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Search
+                    imeAction = ImeAction.Search,
+                    keyboardType = KeyboardType.Text
                 ),
                 keyboardActions = KeyboardActions(
                     onSearch = {
                         viewModel.searchLocation(query)
                         focusManager.clearFocus()
                     }
-                )
+                ),
+                onClearClick = {
+                    query = ""
+                }
             )
         }
 

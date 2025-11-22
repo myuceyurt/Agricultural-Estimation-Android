@@ -81,4 +81,5 @@ dependencies {
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("com.google.accompanist:accompanist-navigation-animation:0.32.0")
+    implementation("com.google.code.gson:gson:2.11.0")
 }
