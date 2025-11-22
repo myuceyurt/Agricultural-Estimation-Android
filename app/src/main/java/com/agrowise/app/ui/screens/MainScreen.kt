@@ -1,17 +1,16 @@
 import android.graphics.Point
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,30 +20,23 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.animation.core.RepeatMode
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agrowise.app.permissions.LocationPermissionHandler
 import com.agrowise.app.ui.components.LocationSearchBar
 import com.agrowise.app.ui.components.SelectAreaButton
+import com.agrowise.app.ui.theme.*
 import com.agrowise.app.ui.viewmodel.MainViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
@@ -56,6 +48,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlin.math.roundToInt
+import kotlin.math.max
 
 @Composable
 fun MainScreen(
@@ -66,6 +59,8 @@ fun MainScreen(
     var polygonPoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     var isAreaSelectionMode by remember { mutableStateOf(false) }
     val selectionPoints = remember { mutableStateListOf<Offset>() }
+
+    var showSelectionFilter by remember { mutableStateOf(false) }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(41.0082, 28.9784), 18f)
@@ -128,25 +123,65 @@ fun MainScreen(
             }
         }
 
-        if (isAreaSelectionMode) {
-            val infiniteTransition = rememberInfiniteTransition()
-            val phase by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1000f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(durationMillis = 1000, easing = LinearEasing),
-                    repeatMode = RepeatMode.Restart
+        AnimatedVisibility(
+            visible = isAreaSelectionMode,
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(300))
+        ) {
+            val explosionProgress = remember { Animatable(0f) }
+            val animatedBrush = createAnimatedBrush()
+
+            LaunchedEffect(Unit) {
+                showSelectionFilter = true
+                explosionProgress.snapTo(0f)
+                explosionProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 4000,
+                        easing = LinearOutSlowInEasing
+                    )
                 )
-            )
+            }
+
+            AnimatedVisibility(
+                visible = showSelectionFilter,
+                enter = fadeIn(),
+                exit = fadeOut(animationSpec = tween(500))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(brush = animatedBrush)
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val maxRadius = max(size.width, size.height) * 1.2f
+                        val radius = explosionProgress.value * maxRadius
+                        val alpha = (1f - explosionProgress.value).coerceIn(0f, 1f)
+                        drawCircle(
+                            brush = animatedBrush,
+                            center = center,
+                            radius = radius,
+                            alpha = alpha
+                        )
+                    }
+                }
+            }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(isAreaSelectionMode) {
-                        if (!isAreaSelectionMode) return@pointerInput
-
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        isAreaSelectionMode = false
+                        onAreaSelectionModeChange(false)
+                        showSelectionFilter = false
+                    }
+                    .pointerInput(Unit) {
                         detectDragGestures(
                             onDragStart = { offset ->
+                                showSelectionFilter = false
                                 selectionPoints.clear()
                                 selectionPoints.add(offset)
                             },
@@ -173,31 +208,9 @@ fun MainScreen(
                             }
                         )
                     }
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    if (selectionPoints.size > 1) {
-                        val path = Path().apply {
-                            moveTo(selectionPoints.first().x, selectionPoints.first().y)
-                            for (i in 1 until selectionPoints.size) {
-                                lineTo(selectionPoints[i].x, selectionPoints[i].y)
-                            }
-                        }
-
-                        drawPath(
-                            path = path,
-                            color = selectionColor,
-                            style = Stroke(
-                                width = 4.dp.toPx(),
-                                pathEffect = PathEffect.dashPathEffect(
-                                    floatArrayOf(20f, 20f),
-                                    phase
-                                )
-                            )
-                        )
-                    }
-                }
-            }
+            )
         }
+
 
         AnimatedVisibility(
             visible = !isAreaSelectionMode,
@@ -243,8 +256,12 @@ fun MainScreen(
             onClick = {
                 isAreaSelectionMode = !isAreaSelectionMode
                 onAreaSelectionModeChange(isAreaSelectionMode)
-                if (!isAreaSelectionMode) {
+
+                if (isAreaSelectionMode) {
+                    showSelectionFilter = true
+                } else {
                     polygonPoints = emptyList()
+                    showSelectionFilter = false
                 }
             },
             onAddClick = {
@@ -259,12 +276,41 @@ fun MainScreen(
                 isAreaSelectionMode = false
                 onAreaSelectionModeChange(isAreaSelectionMode)
                 polygonPoints = emptyList()
+                showSelectionFilter = false
             },
             onDeleteClick = {
                 polygonPoints = emptyList()
             }
         )
     }
+}
+@Composable
+private fun createAnimatedBrush(): Brush {
+    val infiniteTransition = rememberInfiniteTransition(label = "aurora_transition")
+    val offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(10000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
+
+    val size = with(LocalDensity.current) { 3000.dp.toPx() }
+
+    return Brush.radialGradient(
+        colors = listOf(
+            NeonGreen.copy(alpha = 0.22f),
+            AquaGreen.copy(alpha = 0.22f),
+            BrightBlue.copy(alpha = 0.22f),
+            DeepPurple.copy(alpha = 0.22f),
+            Turquoise.copy(alpha = 0.22f),
+            SteelBlue.copy(alpha = 0.22f),
+            ElectricLime.copy(alpha = 0.22f)
+        ),
+        center = Offset(offset * size, offset * size),
+        radius = size * 1.2f
+    )
 }
 
 fun getCenterPoint(polygonPoints: List<LatLng>): LatLng {
