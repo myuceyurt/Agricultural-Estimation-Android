@@ -1,7 +1,15 @@
 import android.graphics.Point
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -25,6 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -47,8 +60,8 @@ import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
-import kotlin.math.roundToInt
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 @Composable
 fun MainScreen(
@@ -131,6 +144,19 @@ fun MainScreen(
             val explosionProgress = remember { Animatable(0f) }
             val animatedBrush = createAnimatedBrush()
 
+            val glowTransition = rememberInfiniteTransition()
+            val glowProgress by glowTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(
+                        durationMillis = 900,
+                        easing = LinearEasing
+                    ),
+                    repeatMode = RepeatMode.Reverse
+                )
+            )
+
             LaunchedEffect(Unit) {
                 showSelectionFilter = true
                 explosionProgress.snapTo(0f)
@@ -138,7 +164,7 @@ fun MainScreen(
                     targetValue = 1f,
                     animationSpec = tween(
                         durationMillis = 4000,
-                        easing = LinearOutSlowInEasing
+                        easing = LinearEasing
                     )
                 )
             }
@@ -208,9 +234,37 @@ fun MainScreen(
                             }
                         )
                     }
-            )
-        }
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    if (selectionPoints.size > 1) {
+                        val path = Path().apply {
+                            moveTo(selectionPoints.first().x, selectionPoints.first().y)
+                            for (i in 1 until selectionPoints.size) {
+                                lineTo(selectionPoints[i].x, selectionPoints[i].y)
+                            }
+                        }
 
+                        val minWidth = 4.dp.toPx()
+                        val maxWidth = 7.dp.toPx()
+                        val strokeWidth = minWidth + (maxWidth - minWidth) * glowProgress
+
+                        val minAlpha = 0.95f
+                        val maxAlpha = 1.2f
+                        val coreAlpha = minAlpha + (maxAlpha - minAlpha) * glowProgress
+
+                        drawPath(
+                            path = path,
+                            color = Color.White.copy(alpha = coreAlpha),
+                            style = Stroke(
+                                width = strokeWidth,
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round
+                            )
+                        )
+                    }
+                }
+            }
+        }
 
         AnimatedVisibility(
             visible = !isAreaSelectionMode,
@@ -284,6 +338,7 @@ fun MainScreen(
         )
     }
 }
+
 @Composable
 private fun createAnimatedBrush(): Brush {
     val infiniteTransition = rememberInfiniteTransition(label = "aurora_transition")
