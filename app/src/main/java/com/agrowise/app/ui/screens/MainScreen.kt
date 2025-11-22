@@ -1,10 +1,17 @@
+import android.graphics.Point
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,16 +24,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.RepeatMode
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.agrowise.app.permissions.LocationPermissionHandler
 import com.agrowise.app.ui.components.LocationSearchBar
@@ -35,16 +49,13 @@ import com.agrowise.app.ui.viewmodel.MainViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.SphericalUtil
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polygon
 import com.google.maps.android.compose.rememberCameraPositionState
-import java.text.NumberFormat
+import kotlin.math.roundToInt
 
 @Composable
 fun MainScreen(
@@ -54,6 +65,7 @@ fun MainScreen(
     var query by remember { mutableStateOf("") }
     var polygonPoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     var isAreaSelectionMode by remember { mutableStateOf(false) }
+    val selectionPoints = remember { mutableStateListOf<Offset>() }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(LatLng(41.0082, 28.9784), 18f)
@@ -68,8 +80,8 @@ fun MainScreen(
     )
 
     LocationPermissionHandler(
-        onPermissionGranted = {viewModel.onPermissionGranted()},
-        onPermissionDenied = {viewModel.onPermissionDenied()}
+        onPermissionGranted = { viewModel.onPermissionGranted() },
+        onPermissionDenied = { viewModel.onPermissionDenied() }
     )
 
     LaunchedEffect(viewModel.initialLocation) {
@@ -83,6 +95,9 @@ fun MainScreen(
             viewModel.getAddressFromLocation(it)
         }
     }
+
+    val selectionColor = MaterialTheme.colorScheme.primary
+    val selectionFillColor = selectionColor.copy(alpha = 0.3f)
 
     Box(
         modifier = Modifier
@@ -101,27 +116,86 @@ fun MainScreen(
                 mapType = MapType.HYBRID,
                 isBuildingEnabled = true
             ),
-            onMapClick = { latLng ->
-                if (isAreaSelectionMode) {
-                    polygonPoints = polygonPoints + latLng
-                }
-
-            }
+            onMapClick = {}
         ) {
-            polygonPoints.forEach { point ->
-                Marker(
-                    state = MarkerState(position = point),
-                    title = "Farm Point ${polygonPoints.indexOf(point) + 1}"
-                )
-            }
-
             if (polygonPoints.size > 1) {
                 Polygon(
                     points = polygonPoints,
-                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                    strokeColor = MaterialTheme.colorScheme.primary,
+                    fillColor = selectionFillColor,
+                    strokeColor = selectionColor,
                     strokeWidth = 5f
                 )
+            }
+        }
+
+        if (isAreaSelectionMode) {
+            val infiniteTransition = rememberInfiniteTransition()
+            val phase by infiniteTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1000f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 1000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                )
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(isAreaSelectionMode) {
+                        if (!isAreaSelectionMode) return@pointerInput
+
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                selectionPoints.clear()
+                                selectionPoints.add(offset)
+                            },
+                            onDrag = { change, _ ->
+                                selectionPoints.add(change.position)
+                                change.consume()
+                            },
+                            onDragEnd = {
+                                val projection = cameraPositionState.projection
+                                if (projection != null && selectionPoints.size > 2) {
+                                    polygonPoints = selectionPoints.mapNotNull { offset ->
+                                        val pt = Point(
+                                            offset.x.roundToInt(),
+                                            offset.y.roundToInt()
+                                        )
+                                        try {
+                                            projection.fromScreenLocation(pt)
+                                        } catch (_: Exception) {
+                                            null
+                                        }
+                                    }
+                                }
+                                selectionPoints.clear()
+                            }
+                        )
+                    }
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    if (selectionPoints.size > 1) {
+                        val path = Path().apply {
+                            moveTo(selectionPoints.first().x, selectionPoints.first().y)
+                            for (i in 1 until selectionPoints.size) {
+                                lineTo(selectionPoints[i].x, selectionPoints[i].y)
+                            }
+                        }
+
+                        drawPath(
+                            path = path,
+                            color = selectionColor,
+                            style = Stroke(
+                                width = 4.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(
+                                    floatArrayOf(20f, 20f),
+                                    phase
+                                )
+                            )
+                        )
+                    }
+                }
             }
         }
 
@@ -160,7 +234,7 @@ fun MainScreen(
 
         SelectAreaButton(
             modifier = Modifier
-                .align(if (isAreaSelectionMode) Alignment.TopEnd else Alignment.TopEnd)
+                .align(Alignment.TopEnd)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(top = animatedTopPadding, end = 16.dp),
             isAddActive = polygonPoints.size >= 3,
@@ -174,18 +248,12 @@ fun MainScreen(
                 }
             },
             onAddClick = {
+                if (polygonPoints.size < 3) return@SelectAreaButton
+
                 val centerPoint = getCenterPoint(polygonPoints)
-                val area = calculatePolygonArea(polygonPoints)
-                val formattedArea = NumberFormat.getNumberInstance().apply {
-                    maximumFractionDigits = 2
-                }.format(area)
-
-                val formattedLat = String.format("%.2f", centerPoint.latitude)
-                val formattedLon = String.format("%.2f", centerPoint.longitude)
-
                 Toast.makeText(
                     context,
-                    "Merkez: $formattedLat, $formattedLon\nAlan: $formattedArea dönüm",
+                    "${centerPoint.latitude}, ${centerPoint.longitude}",
                     Toast.LENGTH_LONG
                 ).show()
                 isAreaSelectionMode = false
@@ -202,12 +270,5 @@ fun MainScreen(
 fun getCenterPoint(polygonPoints: List<LatLng>): LatLng {
     val centerLat = polygonPoints.map { it.latitude }.average()
     val centerLng = polygonPoints.map { it.longitude }.average()
-    val centerPoint = LatLng(centerLat, centerLng)
-
-    return centerPoint
-}
-
-fun calculatePolygonArea(polygonPoints: List<LatLng>): Double {
-    val areaInSquareMeters = SphericalUtil.computeArea(polygonPoints)
-    return areaInSquareMeters / 1000
+    return LatLng(centerLat, centerLng)
 }
