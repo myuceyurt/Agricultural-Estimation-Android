@@ -27,7 +27,13 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -103,7 +109,7 @@ fun MainScreen(
         }
     }
 
-    val pulseTransition = rememberInfiniteTransition(label = "area_pulse")
+    val pulseTransition = rememberInfiniteTransition()
 
     val pulseAlpha by pulseTransition.animateFloat(
         initialValue = 0.25f,
@@ -358,6 +364,14 @@ fun MainScreen(
                 polygonPoints = emptyList()
             }
         )
+
+        if (polygonPoints.size >= 3) {
+            AreaSizeLabelOverlay(
+                cameraPositionState = cameraPositionState,
+                polygonPoints = polygonPoints,
+
+            )
+        }
     }
 }
 
