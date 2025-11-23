@@ -14,18 +14,16 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import androidx.navigation.compose.composable
+import com.agrowise.app.R
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.agrowise.app.ui.components.AppBottomBar
 import com.agrowise.app.ui.components.BottomNavItem
@@ -43,9 +41,9 @@ fun AppNavigation(
     val uiState by viewModel.uiState.collectAsState()
 
     val navItems = listOf(
-        BottomNavItem("Harita", Icons.Default.LocationOn, Screen.Main.route),
-        BottomNavItem("Analizler", Icons.Default.AccountBox, Screen.Analyses.route),
-        BottomNavItem("Profil", Icons.Default.Person, Screen.Profile.route)
+        BottomNavItem("Harita", painterResource(R.drawable.map_tab_icon), Screen.Main.route),
+        BottomNavItem("Analizler", painterResource(R.drawable.analysis_tab_icon), Screen.Analyses.route),
+        BottomNavItem("Profil", painterResource(R.drawable.profile_tab_icon), Screen.Profile.route)
     )
 
     fun getIndex(route: String?): Int {
@@ -98,7 +96,18 @@ fun AppNavigation(
                     )
                 }
             ) {
-                AnalyzesScreen()
+                AnalyzesScreen(
+                    navigateToMap = {
+                        viewModel.onEvent(NavigationUiEvent.OnItemSelected(0))
+                        navController.navigate(Screen.Main.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
             composable(
                 Screen.Profile.route,

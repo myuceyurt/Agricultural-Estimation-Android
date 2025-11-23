@@ -22,4 +22,8 @@ class AnalyzesViewModel : ViewModel() {
             Analysis(4, "Analysis 4", "2.1 ha", "In Progress", 0.45f, 0xFFFFB74D)
         )
     }
+
+    fun deleteAnalysis(analysis: Analysis) {
+        _analyzes.value = _analyzes.value.filter { it.id != analysis.id }
+    }
 }

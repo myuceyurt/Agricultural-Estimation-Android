@@ -1,47 +1,79 @@
 package com.agrowise.app.ui.screens
 
+import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.agrowise.app.R
 import com.agrowise.app.data.model.Analysis
 import com.agrowise.app.ui.theme.AgroWiseTheme
 import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun AnalyzesScreen(
-    viewModel: AnalyzesViewModel = viewModel()
+    viewModel: AnalyzesViewModel = viewModel(),
+    navigateToMap: () -> Unit = {}
 ) {
     val analyzes by viewModel.analyzes.collectAsState()
 
-    AnalyzesScreenContent(analyzes = analyzes)
+    AnalyzesScreenContent(
+        analyzes = analyzes,
+        onAddClick = navigateToMap,
+        onDeleteClick = viewModel::deleteAnalysis
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyzesScreenContent(
-    analyzes: List<Analysis>
+    analyzes: List<Analysis>,
+    onAddClick: () -> Unit,
+    onDeleteClick: (Analysis) -> Unit,
+    initialDeleteMode: Boolean = false
 ) {
+    var deleteMode by remember { mutableStateOf(initialDeleteMode) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -55,13 +87,27 @@ fun AnalyzesScreenContent(
                 },
                 actions = {
                     IconButton(onClick = { }) {
-                        Icon(Icons.Default.Search, contentDescription = "Ara")
+                        Icon(
+                            painter = painterResource(R.drawable.search_icon),
+                            contentDescription = "Ara"
+                        )
                     }
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.Add, contentDescription = "Ekle")
+                    IconButton(onClick = { onAddClick() }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.add_icon),
+                            contentDescription = "Ekle"
+                        )
                     }
-                    IconButton(onClick = { }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Sil")
+                    IconButton(onClick = { deleteMode = !deleteMode }) {
+                        Icon(
+                            painter = if (!deleteMode || analyzes.isEmpty()) {
+                                painterResource(id = R.drawable.open_delete_mode)
+                            } else {
+                                painterResource(id = R.drawable.exit_delete_mode)
+                            },
+                            contentDescription = "Kaldır",
+                            tint = Color.Unspecified
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -72,10 +118,9 @@ fun AnalyzesScreenContent(
         containerColor = Color.White
     ) { padding ->
 
-        if(analyzes.isEmpty()){
-            EmptyAnalyzesContent()
-        }
-        else{
+        if (analyzes.isEmpty()) {
+            EmptyAnalyzesContent(onAddClick)
+        } else {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -106,90 +151,181 @@ fun AnalyzesScreenContent(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
-                    items(analyzes) { analysis ->
-                        AnalysisCard(analysis)
+                    items(
+                        items = analyzes,
+                        key = { it.id }
+                    ) { analysis ->
                         Spacer(modifier = Modifier.height(12.dp))
+                        AnalysisCard(
+                            analysis = analysis,
+                            deleteMode = deleteMode,
+                            onDeleteClick = { onDeleteClick(analysis) }
+                        )
                     }
                 }
             }
         }
-
     }
 }
 
+@SuppressLint("DefaultLocale")
 @Composable
-fun AnalysisCard(analysis: Analysis) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+fun AnalysisCard(
+    analysis: Analysis,
+    deleteMode: Boolean,
+    onDeleteClick: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition()
+    val rawRotation by infiniteTransition.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 100,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+    )
+
+    val rotation = if (deleteMode) rawRotation else 0f
+    val scale = if (deleteMode) 1.02f else 1f
+
+    var isVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isVisible) {
+        if (!isVisible) {
+            delay(300)
+            onDeleteClick()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        exit = slideOutHorizontally(
+            targetOffsetX = { fullWidth -> fullWidth },
+            animationSpec = tween(durationMillis = 300)
+        ) + fadeOut(animationSpec = tween(durationMillis = 300))
     ) {
-        Row(
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
+                .height(100.dp)
+                .graphicsLayer(
+                    rotationZ = rotation,
+                    scaleX = scale,
+                    scaleY = scale,
+                    transformOrigin = TransformOrigin(0.5f, 0.9f)
+                ),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(60.dp)
-                    .background(Color(analysis.color), RoundedCornerShape(8.dp))
-            )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = analysis.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.Black
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = analysis.area,
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            }
-
-            Column(
-                horizontalAlignment = Alignment.End
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .width(120.dp)
-                        .height(8.dp)
-                        .background(Color(0xFFE0E0E0), RoundedCornerShape(4.dp))
+                        .size(60.dp)
+                        .background(Color(analysis.color), RoundedCornerShape(8.dp))
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = analysis.name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = analysis.area,
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        maxLines = 1
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(analysis.score)
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color(0xFF8D6E63),
-                                        Color(0xFFFFEB3B),
-                                        Color(0xFF4CAF50)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(4.dp)
-                            )
+                            .width(100.dp)
+                            .height(8.dp)
+                            .background(Color(0xFFE0E0E0), RoundedCornerShape(4.dp))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(analysis.score)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF8D6E63),
+                                            Color(0xFFFFEB3B),
+                                            Color(0xFF4CAF50)
+                                        )
+                                    ),
+                                    shape = RoundedCornerShape(4.dp)
+                                )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = String.format("%.2f", analysis.score),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = String.format("%.2f", analysis.score),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
+
+                AnimatedVisibility(
+                    visible = deleteMode,
+                    enter = slideInHorizontally(initialOffsetX = { it }) +
+                            expandHorizontally(expandFrom = Alignment.End) +
+                            fadeIn(),
+                    exit = slideOutHorizontally(targetOffsetX = { it }) +
+                            shrinkHorizontally(shrinkTowards = Alignment.End) +
+                            fadeOut()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Spacer(modifier = Modifier.width(24.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = false),
+                                    onClick = {
+                                        // trigger slide-out, real delete happens after animation
+                                        isVisible = false
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.delete_analysis),
+                                contentDescription = "Analiz Sil",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -220,7 +356,7 @@ fun EmptyAnalyzesContent(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    painter = painterResource(R.drawable.add_icon),
                     contentDescription = null,
                     modifier = Modifier.size(56.dp),
                     tint = Color(0xFFBDBDBD)
@@ -262,7 +398,7 @@ fun EmptyAnalyzesContent(
                 )
             ) {
                 Icon(
-                    imageVector = Icons.Default.Add,
+                    painter = painterResource(R.drawable.add_icon),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp)
                 )
@@ -287,9 +423,30 @@ private fun AnalyzesScreenPreview() {
                 Analysis(2, "Analysis 2", "3.7 ha", "Pending", 0.10f, 0xFF8D6E63),
                 Analysis(3, "Analysis 3", "5.2 ha", "Complete", 0.85f, 0xFF66BB6A),
                 Analysis(4, "Analysis 4", "2.1 ha", "In Progress", 0.45f, 0xFFFFB74D)
-            )
+            ),
+            onAddClick = {},
+            onDeleteClick = {}
         )
     }
+}
+
+@Preview
+@Composable
+private fun AnalyzesScreenDeleteModePreview() {
+    AgroWiseTheme {
+        AnalyzesScreenContent(
+            analyzes = listOf(
+                Analysis(1, "Analysis 1", "8.3 ha", "Complete", 0.73f, 0xFF4CAF50),
+                Analysis(2, "Analysis 2", "3.7 ha", "Pending", 0.10f, 0xFF8D6E63),
+                Analysis(3, "Analysis 3", "5.2 ha", "Complete", 0.85f, 0xFF66BB6A),
+                Analysis(4, "Analysis 4", "2.1 ha", "In Progress", 0.45f, 0xFFFFB74D)
+            ),
+            onAddClick = {},
+            onDeleteClick = { },
+            initialDeleteMode = true
+        )
+    }
+
 }
 
 @Preview(showBackground = true)
@@ -297,7 +454,9 @@ private fun AnalyzesScreenPreview() {
 private fun AnalyzesScreenEmptyPreview() {
     AgroWiseTheme {
         AnalyzesScreenContent(
-            analyzes = emptyList()
+            analyzes = emptyList(),
+            onAddClick = {},
+            onDeleteClick = {}
         )
     }
 }

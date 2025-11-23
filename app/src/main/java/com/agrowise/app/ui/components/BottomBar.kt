@@ -2,24 +2,22 @@ package com.agrowise.app.ui.components
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agrowise.app.R
 import com.agrowise.app.ui.navigation.Screen
 
 data class BottomNavItem(
     val label: String,
-    val icon: ImageVector,
+    val icon: Painter,
     val route: String
 )
 
@@ -71,9 +69,9 @@ fun AppBottomBar(
 @Composable
 fun AppBottomBarPreview() {
     val navItems = listOf(
-        BottomNavItem("Harita", Icons.Default.LocationOn, Screen.Main.route),
-        BottomNavItem("Analizler", Icons.Outlined.AccountBox, Screen.Analyses.route),
-        BottomNavItem("Profil", Icons.Default.Person, Screen.Profile.route)
+        BottomNavItem("Harita", painterResource(R.drawable.map_tab_icon), Screen.Main.route),
+        BottomNavItem("Analizler", painterResource(R.drawable.analysis_tab_icon), Screen.Analyses.route),
+        BottomNavItem("Profil", painterResource(R.drawable.profile_tab_icon), Screen.Profile.route)
     )
 
     var selectedIndex by remember { mutableStateOf(0) }
