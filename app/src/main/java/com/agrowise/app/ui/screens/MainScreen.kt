@@ -43,7 +43,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
@@ -58,6 +57,7 @@ import com.agrowise.app.ui.viewmodel.MainViewModel
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.SphericalUtil
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
@@ -349,9 +349,10 @@ fun MainScreen(
                 if (polygonPoints.size < 3) return@SelectAreaButton
 
                 val centerPoint = getCenterPoint(polygonPoints)
-                val calculatedHectare = 50.0
+                val area = SphericalUtil.computeArea(polygonPoints)
+                val areaInHectares = area / 10_000.0
 
-                onAnalyzeClick(centerPoint.latitude, centerPoint.longitude, calculatedHectare)
+                onAnalyzeClick(centerPoint.latitude, centerPoint.longitude, areaInHectares)
 
                 isAreaSelectionMode = false
                 onAreaSelectionModeChange(isAreaSelectionMode)

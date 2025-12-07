@@ -31,6 +31,7 @@ import com.agrowise.app.ui.components.AppBottomBar
 import com.agrowise.app.ui.components.BottomNavItem
 import com.agrowise.app.ui.screens.AnalyzesScreen
 import com.agrowise.app.ui.screens.ProfileScreen
+import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
 import com.agrowise.app.ui.viewmodel.NavigationUiEvent
 import com.agrowise.app.ui.viewmodel.NavigationViewModel
 
@@ -41,6 +42,8 @@ fun AppNavigation(
 ) {
     val navController = rememberAnimatedNavController()
     val uiState by viewModel.uiState.collectAsState()
+
+    val analyzesViewModel: AnalyzesViewModel = hiltViewModel()
 
     val navItems = listOf(
         BottomNavItem("Harita", painterResource(R.drawable.map_tab_icon), Screen.Main.route),
@@ -85,7 +88,6 @@ fun AppNavigation(
                                 saveState = true
                             }
                             launchSingleTop = true
-                            restoreState = true
                         }
                     }
                 )
@@ -119,6 +121,7 @@ fun AppNavigation(
                 val hectare = backStackEntry.arguments?.getFloat("hectare")?.toDouble() ?: 0.0
 
                 AnalyzesScreen(
+                    viewModel = analyzesViewModel,
                     navigateToMap = {
                         viewModel.onEvent(NavigationUiEvent.OnItemSelected(0))
                         navController.navigate(Screen.Main.route) {
@@ -176,12 +179,18 @@ fun AppNavigation(
                 onItemSelected = { index ->
                     viewModel.onEvent(NavigationUiEvent.OnItemSelected(index))
                     if (navController.currentDestination?.route != navItems[index].route) {
+                        if(navController.currentDestination?.route == Screen.Analyses.route){
+                            navController.navigate(Screen.Analyses.route){
+                                popUpTo(navController.graph.startDestinationId){
+                                    saveState = false
+                                }
+                            }
+                        }
                         navController.navigate(navItems[index].route) {
                             popUpTo(navController.graph.startDestinationId) {
                                 saveState = true
                             }
                             launchSingleTop = true
-                            restoreState = true
                         }
                     }
                 }
