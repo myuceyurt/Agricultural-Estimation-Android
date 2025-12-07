@@ -1,5 +1,4 @@
 import android.graphics.Point
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -71,7 +70,8 @@ import kotlin.math.roundToInt
 @Composable
 fun MainScreen(
     viewModel: MainViewModel = hiltViewModel(),
-    onAreaSelectionModeChange: (Boolean) -> Unit
+    onAreaSelectionModeChange: (Boolean) -> Unit,
+    onAnalyzeClick: (Double, Double, Double) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var polygonPoints by remember { mutableStateOf<List<LatLng>>(emptyList()) }
@@ -84,7 +84,6 @@ fun MainScreen(
         position = CameraPosition.fromLatLngZoom(LatLng(41.0082, 28.9784), 18f)
     }
 
-    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
     val animatedTopPadding by animateDpAsState(
@@ -350,11 +349,10 @@ fun MainScreen(
                 if (polygonPoints.size < 3) return@SelectAreaButton
 
                 val centerPoint = getCenterPoint(polygonPoints)
-                Toast.makeText(
-                    context,
-                    "${centerPoint.latitude}, ${centerPoint.longitude}",
-                    Toast.LENGTH_LONG
-                ).show()
+                val calculatedHectare = 50.0
+
+                onAnalyzeClick(centerPoint.latitude, centerPoint.longitude, calculatedHectare)
+
                 isAreaSelectionMode = false
                 onAreaSelectionModeChange(isAreaSelectionMode)
                 polygonPoints = emptyList()
@@ -370,7 +368,7 @@ fun MainScreen(
                 cameraPositionState = cameraPositionState,
                 polygonPoints = polygonPoints,
 
-            )
+                )
         }
     }
 }

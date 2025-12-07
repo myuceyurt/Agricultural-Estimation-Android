@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -43,22 +44,33 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.agrowise.app.R
 import com.agrowise.app.data.model.Analysis
+import com.agrowise.app.ui.components.shimmerEffect
+import com.agrowise.app.ui.state.PredictionUiState
 import com.agrowise.app.ui.theme.AgroWiseTheme
 import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
 import kotlinx.coroutines.delay
 
 @Composable
 fun AnalyzesScreen(
-    viewModel: AnalyzesViewModel = viewModel(),
-    navigateToMap: () -> Unit = {}
+    viewModel: AnalyzesViewModel = hiltViewModel(),
+    navigateToMap: () -> Unit = {},
+    startAnalysisParams: Triple<Double, Double, Double>? = null
 ) {
     val analyzes by viewModel.analyzes.collectAsState()
+    val predictionState by viewModel.predictionState.collectAsState()
+
+    LaunchedEffect(startAnalysisParams) {
+        startAnalysisParams?.let { (lat, lon, hectare) ->
+            viewModel.createAnalysis(lat, lon, hectare)
+        }
+    }
 
     AnalyzesScreenContent(
         analyzes = analyzes,
+        predictionState = predictionState,
         onAddClick = navigateToMap,
         onDeleteClick = viewModel::deleteAnalysis
     )
@@ -68,6 +80,7 @@ fun AnalyzesScreen(
 @Composable
 fun AnalyzesScreenContent(
     analyzes: List<Analysis>,
+    predictionState: PredictionUiState = PredictionUiState.Idle,
     onAddClick: () -> Unit,
     onDeleteClick: (Analysis) -> Unit,
     initialDeleteMode: Boolean = false
@@ -117,8 +130,7 @@ fun AnalyzesScreenContent(
         },
         containerColor = Color.White
     ) { padding ->
-
-        if (analyzes.isEmpty()) {
+        if (analyzes.isEmpty() && predictionState is PredictionUiState.Idle) {
             EmptyAnalyzesContent(onAddClick)
         } else {
             Column(
@@ -151,16 +163,30 @@ fun AnalyzesScreenContent(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
-                    items(
-                        items = analyzes,
-                        key = { it.id }
-                    ) { analysis ->
-                        Spacer(modifier = Modifier.height(12.dp))
+                    if (predictionState is PredictionUiState.Loading) {
+                        item {
+                            LoadingAnalysisCard()
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+
+                    if (predictionState is PredictionUiState.Error) {
+                        item {
+                            val msg = predictionState.msg
+                            Text(
+                                text = "Hata oluştu: $msg",
+                                color = Color.Red,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+                    items(items = analyzes, key = { it.id }) { analysis ->
                         AnalysisCard(
                             analysis = analysis,
                             deleteMode = deleteMode,
                             onDeleteClick = { onDeleteClick(analysis) }
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
             }
@@ -271,7 +297,7 @@ fun AnalysisCard(
                         Box(
                             modifier = Modifier
                                 .fillMaxHeight()
-                                .fillMaxWidth(analysis.score)
+                                .fillMaxWidth(analysis.score.toFloat())
                                 .background(
                                     brush = Brush.horizontalGradient(
                                         colors = listOf(
@@ -419,14 +445,86 @@ private fun AnalyzesScreenPreview() {
     AgroWiseTheme {
         AnalyzesScreenContent(
             analyzes = listOf(
-                Analysis(1, "Analysis 1", "8.3 ha", "Complete", 0.73f, 0xFF4CAF50),
-                Analysis(2, "Analysis 2", "3.7 ha", "Pending", 0.10f, 0xFF8D6E63),
-                Analysis(3, "Analysis 3", "5.2 ha", "Complete", 0.85f, 0xFF66BB6A),
-                Analysis(4, "Analysis 4", "2.1 ha", "In Progress", 0.45f, 0xFFFFB74D)
+                Analysis(1, "Analysis 1", "8.3 ha", "Complete", 0.73, 0xFF4CAF50),
+                Analysis(2, "Analysis 2", "3.7 ha", "Pending", 0.10, 0xFF8D6E63),
+                Analysis(3, "Analysis 3", "5.2 ha", "Complete", 0.85, 0xFF66BB6A),
+                Analysis(4, "Analysis 4", "2.1 ha", "In Progress", 0.45, 0xFFFFB74D)
             ),
             onAddClick = {},
             onDeleteClick = {}
         )
+    }
+}
+
+@Composable
+fun LoadingAnalysisCard() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(100.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .shimmerEffect()
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Metinler Yeri
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .height(20.dp)
+                        .fillMaxWidth(0.7f)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmerEffect()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .height(14.dp)
+                        .fillMaxWidth(0.4f)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmerEffect()
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmerEffect()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(40.dp, 20.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .shimmerEffect()
+                )
+            }
+        }
     }
 }
 
@@ -436,10 +534,10 @@ private fun AnalyzesScreenDeleteModePreview() {
     AgroWiseTheme {
         AnalyzesScreenContent(
             analyzes = listOf(
-                Analysis(1, "Analysis 1", "8.3 ha", "Complete", 0.73f, 0xFF4CAF50),
-                Analysis(2, "Analysis 2", "3.7 ha", "Pending", 0.10f, 0xFF8D6E63),
-                Analysis(3, "Analysis 3", "5.2 ha", "Complete", 0.85f, 0xFF66BB6A),
-                Analysis(4, "Analysis 4", "2.1 ha", "In Progress", 0.45f, 0xFFFFB74D)
+                Analysis(1, "Analysis 1", "8.3 ha", "Complete", 0.73, 0xFF4CAF50),
+                Analysis(2, "Analysis 2", "3.7 ha", "Pending", 0.10, 0xFF8D6E63),
+                Analysis(3, "Analysis 3", "5.2 ha", "Complete", 0.85, 0xFF66BB6A),
+                Analysis(4, "Analysis 4", "2.1 ha", "In Progress", 0.45, 0xFFFFB74D)
             ),
             onAddClick = {},
             onDeleteClick = { },

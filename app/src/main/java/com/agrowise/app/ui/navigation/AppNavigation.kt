@@ -21,8 +21,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.agrowise.app.R
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.agrowise.app.ui.components.AppBottomBar
@@ -74,11 +76,27 @@ fun AppNavigation(
                 MainScreen(
                     onAreaSelectionModeChange = {
                         viewModel.onEvent(NavigationUiEvent.OnBottomBarVisibilityChanged(!it))
+                    },
+                    onAnalyzeClick = { lat, lon, hectare ->
+                        viewModel.onEvent(NavigationUiEvent.OnItemSelected(1))
+
+                        navController.navigate(Screen.Analyses.createRoute(lat, lon, hectare)) {
+                            popUpTo(Screen.Main.route) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 )
             }
             composable(
                 Screen.Analyses.route,
+                arguments = listOf(
+                    navArgument("lat") { type = NavType.FloatType; defaultValue = 0f },
+                    navArgument("lon") { type = NavType.FloatType; defaultValue = 0f },
+                    navArgument("hectare") { type = NavType.FloatType; defaultValue = 0f }
+                ),
                 enterTransition = {
                     val initialIndex = getIndex(initialState.destination.route)
                     val targetIndex = getIndex(targetState.destination.route)
@@ -95,7 +113,11 @@ fun AppNavigation(
                         animationSpec = tween(300)
                     )
                 }
-            ) {
+            ) {backStackEntry ->
+                val lat = backStackEntry.arguments?.getFloat("lat")?.toDouble() ?: 0.0
+                val lon = backStackEntry.arguments?.getFloat("lon")?.toDouble() ?: 0.0
+                val hectare = backStackEntry.arguments?.getFloat("hectare")?.toDouble() ?: 0.0
+
                 AnalyzesScreen(
                     navigateToMap = {
                         viewModel.onEvent(NavigationUiEvent.OnItemSelected(0))
@@ -106,7 +128,8 @@ fun AppNavigation(
                             launchSingleTop = true
                             restoreState = true
                         }
-                    }
+                    },
+                    startAnalysisParams = if (lat != 0.0) Triple(lat, lon, hectare) else null
                 )
             }
             composable(

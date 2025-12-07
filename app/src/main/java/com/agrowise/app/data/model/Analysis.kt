@@ -5,6 +5,6 @@ data class Analysis(
     val name: String,
     val area: String,
     val status: String,
-    val score: Float,
+    val score: Double,
     val color: Long
 )
