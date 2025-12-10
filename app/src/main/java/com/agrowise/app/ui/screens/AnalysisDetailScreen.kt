@@ -59,7 +59,7 @@ private val TextGray = Color(0xFF757575)
 fun AnalysisDetailScreen(
     analysisId: Int,
     onBackClick: () -> Unit = {},
-    onChatClick: () -> Unit = {},
+    onRecommendationClick: () -> Unit = {},
     viewModel: AnalyzesViewModel = hiltViewModel()
 ) {
     val analyzes by viewModel.analyzes.collectAsState()
@@ -146,7 +146,7 @@ fun AnalysisDetailScreen(
                     }
 
                     Button(
-                        onClick = { /* Action */ },
+                        onClick = onRecommendationClick,
                         modifier = Modifier
                             .weight(1f)
                             .height(50.dp),

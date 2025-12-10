@@ -33,6 +33,7 @@ import com.agrowise.app.ui.components.BottomNavItem
 import com.agrowise.app.ui.screens.AnalyzesScreen
 import com.agrowise.app.ui.screens.AnalysisDetailScreen
 import com.agrowise.app.ui.screens.ProfileScreen
+import com.agrowise.app.ui.screens.RecommendationScreen
 import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
 import com.agrowise.app.ui.viewmodel.NavigationUiEvent
 import com.agrowise.app.ui.viewmodel.NavigationViewModel
@@ -188,6 +189,34 @@ fun AppNavigation(
                     analysisId = analysisId,
                     onBackClick = {
                         viewModel.onEvent(NavigationUiEvent.OnBottomBarVisibilityChanged(true))
+                        navController.popBackStack()
+                    },
+                    onRecommendationClick = {
+                        navController.navigate(Screen.Recommendation.createRoute(analysisId))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.Recommendation.route,
+                arguments = listOf(navArgument("analysisId") { type = NavType.IntType }),
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+                }
+            ) { backStackEntry ->
+                val analysisId = backStackEntry.arguments?.getInt("analysisId") ?: 0
+                RecommendationScreen(
+                    analysisId = analysisId,
+                    onBackClick = {
                         navController.popBackStack()
                     }
                 )

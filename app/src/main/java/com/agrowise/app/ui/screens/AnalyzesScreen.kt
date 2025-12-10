@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,9 +34,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -45,14 +49,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.agrowise.app.R
 import com.agrowise.app.data.model.Analysis
 import com.agrowise.app.ui.components.shimmerEffect
 import com.agrowise.app.ui.state.PredictionUiState
 import com.agrowise.app.ui.theme.AgroWiseTheme
 import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
-import com.google.maps.android.BuildConfig
 import kotlinx.coroutines.delay
 
 @Composable
@@ -266,20 +268,109 @@ fun AnalysisCard(
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Satellite image instead of colored box
-                AsyncImage(
-                    model = "https://maps.googleapis.com/maps/api/staticmap?" +
-                            "center=${analysis.lat},${analysis.lon}" +
-                            "&zoom=16" +
-                            "&size=200x200" +
-                            "&maptype=satellite" +
-                            "&key=${com.agrowise.app.BuildConfig.MAPS_API_KEY}",
-                    contentDescription = "Satellite view of ${analysis.name}",
+                Box(
                     modifier = Modifier
                         .size(60.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFE0E0E0))
-                )
+                        .background(Color(0xFFE8F5E9))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFFC8E6C9),
+                                        Color(0xFFA5D6A7)
+                                    )
+                                )
+                            )
+                    )
+
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val lineColor = Color(0x40000000)
+                        val lineWidth = 1.dp.toPx()
+
+                        for (i in 1..2) {
+                            val x = size.width * i / 3
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(x, 0f),
+                                end = Offset(x, size.height),
+                                strokeWidth = lineWidth
+                            )
+                        }
+
+                        for (i in 1..2) {
+                            val y = size.height * i / 3
+                            drawLine(
+                                color = lineColor,
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = lineWidth
+                            )
+                        }
+                    }
+
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val fieldPath = Path().apply {
+                            moveTo(size.width * 0.25f, size.height * 0.15f)
+                            lineTo(size.width * 0.75f, size.height * 0.2f)
+                            lineTo(size.width * 0.85f, size.height * 0.6f)
+                            lineTo(size.width * 0.65f, size.height * 0.85f)
+                            lineTo(size.width * 0.2f, size.height * 0.75f)
+                            lineTo(size.width * 0.15f, size.height * 0.35f)
+                            close()
+                        }
+
+                        drawPath(
+                            path = fieldPath,
+                            color = Color(0x884CAF50)
+                        )
+
+                        drawPath(
+                            path = fieldPath,
+                            color = Color(0xFF2E7D32),
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+                    }
+
+                    Canvas(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .align(Alignment.Center)
+                            .offset(y = (-2).dp)
+                    ) {
+                        val pinColor = Color(0xFFD32F2F)
+
+                        val pinPath = Path().apply {
+                            moveTo(size.width * 0.5f, size.height * 0.9f)
+                            lineTo(size.width * 0.3f, size.height * 0.4f)
+                            cubicTo(
+                                size.width * 0.2f, size.height * 0.2f,
+                                size.width * 0.3f, 0f,
+                                size.width * 0.5f, 0f
+                            )
+                            cubicTo(
+                                size.width * 0.7f, 0f,
+                                size.width * 0.8f, size.height * 0.2f,
+                                size.width * 0.7f, size.height * 0.4f
+                            )
+                            close()
+                        }
+
+                        drawPath(
+                            path = pinPath,
+                            color = pinColor
+                        )
+
+                        drawCircle(
+                            color = Color.White,
+                            radius = size.width * 0.15f,
+                            center = Offset(size.width * 0.5f, size.height * 0.25f)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -360,7 +451,6 @@ fun AnalysisCard(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(bounded = false),
                                     onClick = {
-                                        // trigger slide-out, real delete happens after animation
                                         isVisible = false
                                     }
                                 ),
@@ -503,7 +593,6 @@ fun LoadingAnalysisCard() {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Metinler Yeri
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.Center
