@@ -14,6 +14,9 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -28,7 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.agrowise.app.data.model.Analysis
 import com.agrowise.app.ui.theme.AgroWiseTheme
+import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val AgroGreen = Color(0xFF4CAF50)
 private val BgGray = Color(0xFFF5F5F5)
@@ -39,21 +48,42 @@ private val TextGray = Color(0xFF757575)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalysisDetailScreen(
-    onBackClick: () -> Unit = {}
+    analysisId: Int,
+    onBackClick: () -> Unit = {},
+    viewModel: AnalyzesViewModel = hiltViewModel()
 ) {
+    val analyzes by viewModel.analyzes.collectAsState()
+    val analysis = analyzes.find { it.id == analysisId }
+
+    LaunchedEffect(analysisId) {
+        if (analysis == null) {
+            viewModel.fetchAnalyzesById(analysisId.toLong())
+        }
+    }
+
+    if (analysis == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = AgroGreen)
+        }
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
-                            text = "Parsel A - Kuzey",
+                            text = analysis.name,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextBlack
                         )
                         Text(
-                            text = "10 Eki 2023 • 14:30",
+                            text = SimpleDateFormat("dd MMM yyyy • HH:mm", Locale.forLanguageTag("tr")).format(Date()),
                             fontSize = 12.sp,
                             color = TextGray
                         )
@@ -148,14 +178,17 @@ fun AnalysisDetailScreen(
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(AgroGreen, CircleShape)
+                                .background(
+                                    if (analysis.soilIncluded) AgroGreen else Color(0xFFFFB74D),
+                                    CircleShape
+                                )
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Sağlıklı",
+                            text = if (analysis.soilIncluded) "Toprak Dahil" else "Sadece Uydu",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = AgroGreen
+                            color = if (analysis.soilIncluded) AgroGreen else Color(0xFFFFB74D)
                         )
                     }
                 }
@@ -163,7 +196,7 @@ fun AnalysisDetailScreen(
 
             Column(modifier = Modifier.padding(16.dp)) {
 
-                ScoreCardSection()
+                ScoreCardSection(analysis = analysis)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -227,13 +260,17 @@ fun AnalysisDetailScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.LocationOn, null, tint = TextGray, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Konum: 41.0082, 28.9784", color = TextGray, fontSize = 14.sp)
+                            Text(
+                                "Konum: ${String.format(Locale.US, "%.4f", analysis.lat)}, ${String.format(Locale.US, "%.4f", analysis.lon)}",
+                                color = TextGray,
+                                fontSize = 14.sp
+                            )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Share, null, tint = TextGray, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Son güncelleme: 2 gün önce", color = TextGray, fontSize = 14.sp)
+                            Text("Toplam Verim: ${analysis.totalYieldTon}", color = TextGray, fontSize = 14.sp)
                         }
                     }
                 }
@@ -243,7 +280,10 @@ fun AnalysisDetailScreen(
 }
 
 @Composable
-fun ScoreCardSection() {
+fun ScoreCardSection(analysis: Analysis) {
+    val normalizedScore = (analysis.score / 10).coerceIn(0.0, 1.0).toFloat()
+    val displayScore = (analysis.score * 10).toInt().coerceIn(0, 100)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -258,10 +298,10 @@ fun ScoreCardSection() {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(100.dp)
             ) {
-                CircularHealthIndicator(score = 0.85f)
+                CircularHealthIndicator(score = normalizedScore)
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "85",
+                        text = "$displayScore",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = TextBlack
@@ -285,7 +325,7 @@ fun ScoreCardSection() {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Bitki sağlığı mevsim normallerinin üzerinde seyrediyor.",
+                    text = "${String.format(Locale.US, "%.2f", analysis.score)} ton/hektar • ${analysis.area}",
                     fontSize = 14.sp,
                     color = TextGray,
                     lineHeight = 20.sp
@@ -496,6 +536,6 @@ fun SatelliteViewMockup() {
 @Composable
 fun AnalysisDetailScreenPreview() {
     AgroWiseTheme {
-        AnalysisDetailScreen()
+        AnalysisDetailScreen(analysisId = 1)
     }
 }

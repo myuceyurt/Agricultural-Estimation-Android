@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.random.Random
 
 @HiltViewModel
 class AnalyzesViewModel @Inject constructor(
@@ -29,7 +28,7 @@ class AnalyzesViewModel @Inject constructor(
         viewModelScope.launch {
             _predictionState.value = PredictionUiState.Loading
             try {
-                val response = repository.getPrediction(lat, lon, hectare)
+                val response = repository.startPrediction(lat, lon, hectare)
 
                 if (response.isSuccessful && response.body() != null) {
                     val apiResponse = response.body()!!
@@ -50,6 +49,24 @@ class AnalyzesViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _predictionState.value = PredictionUiState.Error("Hata: ${e.message}")
+            }
+        }
+    }
+
+    fun fetchAnalyzesById(id: Long) {
+        viewModelScope.launch {
+            try {
+                val response = repository.getPredictionById(id)
+                if (response.isSuccessful && response.body() != null) {
+                    val apiResponse = response.body()!!
+                    val analysis = mapToAnalysis(apiResponse)
+
+                    val currentList = _analyzes.value.toMutableList()
+                    currentList.add(0, analysis)
+                    _analyzes.value = currentList
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -98,7 +115,12 @@ class AnalyzesViewModel @Inject constructor(
             area = "${data.hectare} ha",
             status = "Tamamlandı",
             score = data.yieldPerHectare,
-            color = if (data.soilIncluded) 0xFF4CAF50 else 0xFFFFB74D
+            color = if (data.soilIncluded) 0xFF4CAF50 else 0xFFFFB74D,
+            lat = data.lat,
+            lon = data.lon,
+            hectare = data.hectare,
+            totalYieldTon = data.totalYieldTon,
+            soilIncluded = data.soilIncluded
         )
     }
 }

@@ -9,9 +9,13 @@ import javax.inject.Inject
 class PredictionRepository @Inject constructor(
     private val apiService: ApiService
 ) {
-    suspend fun getPrediction(lat: Double, lon: Double, hectar: Double): Response<PredictionResponse> {
+    suspend fun startPrediction(lat: Double, lon: Double, hectar: Double): Response<PredictionResponse> {
         val request = PredictionRequest(lat, lon, hectar)
-        return apiService.getPrediction(request)
+        return apiService.startPrediction(request)
+    }
+
+    suspend fun getPredictionById(id: Long): Response<PredictionResponse> {
+        return apiService.getPredictionById(id)
     }
 
     suspend fun getAllPredictions(): Response<List<PredictionResponse>> {

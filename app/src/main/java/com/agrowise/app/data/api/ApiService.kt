@@ -11,7 +11,10 @@ import retrofit2.http.Path
 
 interface ApiService {
     @POST("api/ml/predict")
-    suspend fun getPrediction(@Body request: PredictionRequest): Response<PredictionResponse>
+    suspend fun startPrediction(@Body request: PredictionRequest): Response<PredictionResponse>
+
+    @GET("api/ml/predictions/{id}")
+    suspend fun getPredictionById(@Path("id") id: Long): Response<PredictionResponse>
 
     @GET("api/ml/predictions/createdAt")
     suspend fun getAllPredictions(): Response<List<PredictionResponse>>

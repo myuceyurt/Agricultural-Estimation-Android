@@ -178,12 +178,14 @@ fun AppNavigation(
                         animationSpec = tween(300)
                     )
                 }
-            ) {
+            ) { backStackEntry ->
                 LaunchedEffect(Unit) {
                     viewModel.onEvent(NavigationUiEvent.OnBottomBarVisibilityChanged(false))
                 }
 
+                val analysisId = backStackEntry.arguments?.getInt("analysisId") ?: 0
                 AnalysisDetailScreen(
+                    analysisId = analysisId,
                     onBackClick = {
                         viewModel.onEvent(NavigationUiEvent.OnBottomBarVisibilityChanged(true))
                         navController.popBackStack()

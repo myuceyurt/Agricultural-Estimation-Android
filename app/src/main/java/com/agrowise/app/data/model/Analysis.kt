@@ -6,5 +6,10 @@ data class Analysis(
     val area: String,
     val status: String,
     val score: Double,
-    val color: Long
+    val color: Long,
+    val lat: Double = 0.0,
+    val lon: Double = 0.0,
+    val hectare: Double = 0.0,
+    val totalYieldTon: String = "",
+    val soilIncluded: Boolean = false
 )
