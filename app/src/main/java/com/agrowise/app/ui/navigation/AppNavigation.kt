@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -30,6 +31,7 @@ import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.agrowise.app.ui.components.AppBottomBar
 import com.agrowise.app.ui.components.BottomNavItem
 import com.agrowise.app.ui.screens.AnalyzesScreen
+import com.agrowise.app.ui.screens.AnalysisDetailScreen
 import com.agrowise.app.ui.screens.ProfileScreen
 import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
 import com.agrowise.app.ui.viewmodel.NavigationUiEvent
@@ -52,6 +54,7 @@ fun AppNavigation(
     )
 
     fun getIndex(route: String?): Int {
+        if (route?.startsWith("analysis_detail") == true) return 1
         return navItems.indexOfFirst { it.route == route }
     }
 
@@ -115,7 +118,7 @@ fun AppNavigation(
                         animationSpec = tween(300)
                     )
                 }
-            ) {backStackEntry ->
+            ) { backStackEntry ->
                 val lat = backStackEntry.arguments?.getFloat("lat")?.toDouble() ?: 0.0
                 val lon = backStackEntry.arguments?.getFloat("lon")?.toDouble() ?: 0.0
                 val hectare = backStackEntry.arguments?.getFloat("hectare")?.toDouble() ?: 0.0
@@ -132,7 +135,10 @@ fun AppNavigation(
                             restoreState = true
                         }
                     },
-                    startAnalysisParams = if (lat != 0.0) Triple(lat, lon, hectare) else null
+                    startAnalysisParams = if (lat != 0.0) Triple(lat, lon, hectare) else null,
+                    onAnalysisClick = { analysisId ->
+                        navController.navigate(Screen.AnalysisDetail.createRoute(analysisId))
+                    }
                 )
             }
             composable(
@@ -155,6 +161,34 @@ fun AppNavigation(
                 }
             ) {
                 ProfileScreen()
+            }
+
+            composable(
+                route = Screen.AnalysisDetail.route,
+                arguments = listOf(navArgument("analysisId") { type = NavType.IntType }),
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+                },
+                exitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+                }
+            ) {
+                LaunchedEffect(Unit) {
+                    viewModel.onEvent(NavigationUiEvent.OnBottomBarVisibilityChanged(false))
+                }
+
+                AnalysisDetailScreen(
+                    onBackClick = {
+                        viewModel.onEvent(NavigationUiEvent.OnBottomBarVisibilityChanged(true))
+                        navController.popBackStack()
+                    }
+                )
             }
         }
 

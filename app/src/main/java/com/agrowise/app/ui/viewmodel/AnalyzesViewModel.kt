@@ -1,8 +1,10 @@
 package com.agrowise.app.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agrowise.app.data.model.Analysis
+import com.agrowise.app.data.model.PredictionResponse
 import com.agrowise.app.data.repository.PredictionRepository
 import com.agrowise.app.ui.state.PredictionUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,29 +30,42 @@ class AnalyzesViewModel @Inject constructor(
             _predictionState.value = PredictionUiState.Loading
             try {
                 val response = repository.getPrediction(lat, lon, hectare)
+
                 if (response.isSuccessful && response.body() != null) {
-                    val apiData = response.body()!!.data!!
-                    val newAnalysis = Analysis(
-                        id = Random.nextInt(),
-                        name = "Analiz #${_analyzes.value.size + 1}",
-                        area = "$hectare ha",
-                        status = "Tamamlandı",
-                        score = apiData.yieldPerHectare,
-                        color = if (apiData.soilIncluded) 0xFF4CAF50 else 0xFFFFB74D
-                    )
+                    val apiResponse = response.body()!!
 
-                    val currentList = _analyzes.value.toMutableList()
-                    currentList.add(0, newAnalysis)
-                    _analyzes.value = currentList
+                    if (apiResponse.status == "success" && apiResponse.data != null) {
+                        val newAnalysis = mapToAnalysis(apiResponse)
 
-                    resetState()
-                }
-                else {
+                        val currentList = _analyzes.value.toMutableList()
+                        currentList.add(0, newAnalysis)
+                        _analyzes.value = currentList
+
+                        resetState()
+                    } else {
+                        _predictionState.value = PredictionUiState.Error("AI Hatası")
+                    }
+                } else {
                     _predictionState.value = PredictionUiState.Error("Sunucu Hatası: ${response.code()}")
                 }
-            }
-            catch (e: Exception){
+            } catch (e: Exception) {
                 _predictionState.value = PredictionUiState.Error("Hata: ${e.message}")
+            }
+        }
+    }
+
+    fun fetchAllAnalyzes() {
+        viewModelScope.launch {
+            try {
+                val response = repository.getAllPredictions()
+                if (response.isSuccessful && response.body() != null) {
+                    val mappedList = response.body()!!.map { apiResponse ->
+                        mapToAnalysis(apiResponse)
+                    }
+                    _analyzes.value = mappedList
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -60,6 +75,30 @@ class AnalyzesViewModel @Inject constructor(
     }
 
     fun deleteAnalysis(analysis: Analysis) {
-        _analyzes.value = _analyzes.value.filter { it.id != analysis.id }
+        viewModelScope.launch {
+            try {
+                val response = repository.deletePrediction(analysis.id.toLong())
+
+                if (response.isSuccessful) {
+                    _analyzes.value = _analyzes.value.filter { it.id != analysis.id }
+                } else {
+                    Log.e("AnalyzesViewModel", "Error deleting analysis: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun mapToAnalysis(response: PredictionResponse): Analysis {
+        val data = response.data!!
+        return Analysis(
+            id = data.id.toInt(),
+            name = "Analiz #${data.id}",
+            area = "${data.hectare} ha",
+            status = "Tamamlandı",
+            score = data.yieldPerHectare,
+            color = if (data.soilIncluded) 0xFF4CAF50 else 0xFFFFB74D
+        )
     }
 }

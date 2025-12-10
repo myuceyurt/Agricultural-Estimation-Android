@@ -13,4 +13,12 @@ class PredictionRepository @Inject constructor(
         val request = PredictionRequest(lat, lon, hectar)
         return apiService.getPrediction(request)
     }
+
+    suspend fun getAllPredictions(): Response<List<PredictionResponse>> {
+        return apiService.getAllPredictions()
+    }
+
+    suspend fun deletePrediction(id: Long): Response<Unit> {
+        return apiService.deletePrediction(id)
+    }
 }

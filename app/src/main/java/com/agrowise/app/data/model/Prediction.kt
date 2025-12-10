@@ -14,8 +14,11 @@ data class PredictionResponse(
 )
 
 data class PredictionData(
+    val id: Long,
     val lat: Double,
     val lon: Double,
+    val hectare: Double,
+
 
     @SerializedName("yield_per_hektar")
     val yieldPerHectare: Double,

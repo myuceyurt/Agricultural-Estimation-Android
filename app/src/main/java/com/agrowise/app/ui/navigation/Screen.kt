@@ -8,4 +8,7 @@ sealed class Screen(val route: String) {
         }
     }
     object Profile : Screen("profile")
+    object AnalysisDetail : Screen("analysis_detail/{analysisId}") {
+        fun createRoute(analysisId: Int): String = "analysis_detail/$analysisId"
+    }
 }

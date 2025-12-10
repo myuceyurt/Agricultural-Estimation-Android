@@ -57,10 +57,15 @@ import kotlinx.coroutines.delay
 fun AnalyzesScreen(
     viewModel: AnalyzesViewModel = hiltViewModel(),
     navigateToMap: () -> Unit = {},
+    onAnalysisClick: (Int) -> Unit,
     startAnalysisParams: Triple<Double, Double, Double>? = null
 ) {
     val analyzes by viewModel.analyzes.collectAsState()
     val predictionState by viewModel.predictionState.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.fetchAllAnalyzes()
+    }
 
     LaunchedEffect(startAnalysisParams) {
         startAnalysisParams?.let { (lat, lon, hectare) ->
@@ -72,7 +77,8 @@ fun AnalyzesScreen(
         analyzes = analyzes,
         predictionState = predictionState,
         onAddClick = navigateToMap,
-        onDeleteClick = viewModel::deleteAnalysis
+        onDeleteClick = viewModel::deleteAnalysis,
+        onAnalysisClick = onAnalysisClick
     )
 }
 
@@ -83,7 +89,8 @@ fun AnalyzesScreenContent(
     predictionState: PredictionUiState = PredictionUiState.Idle,
     onAddClick: () -> Unit,
     onDeleteClick: (Analysis) -> Unit,
-    initialDeleteMode: Boolean = false
+    initialDeleteMode: Boolean = false,
+    onAnalysisClick: (Int) -> Unit = {}
 ) {
     var deleteMode by remember { mutableStateOf(initialDeleteMode) }
 
@@ -181,11 +188,15 @@ fun AnalyzesScreenContent(
                         }
                     }
                     items(items = analyzes, key = { it.id }) { analysis ->
-                        AnalysisCard(
-                            analysis = analysis,
-                            deleteMode = deleteMode,
-                            onDeleteClick = { onDeleteClick(analysis) }
-                        )
+                        Box(modifier = Modifier.clickable {
+                            if (!deleteMode) onAnalysisClick(analysis.id)
+                        }) {
+                            AnalysisCard(
+                                analysis = analysis,
+                                deleteMode = deleteMode,
+                                onDeleteClick = { onDeleteClick(analysis) }
+                            )
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
