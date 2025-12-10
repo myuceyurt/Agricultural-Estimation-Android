@@ -35,6 +35,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.agrowise.app.data.model.Analysis
 import com.agrowise.app.ui.theme.AgroWiseTheme
 import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapType
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -50,6 +59,7 @@ private val TextGray = Color(0xFF757575)
 fun AnalysisDetailScreen(
     analysisId: Int,
     onBackClick: () -> Unit = {},
+    onChatClick: () -> Unit = {},
     viewModel: AnalyzesViewModel = hiltViewModel()
 ) {
     val analyzes by viewModel.analyzes.collectAsState()
@@ -159,9 +169,11 @@ fun AnalysisDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp)
-                    .background(Color(0xFFE0E0E0))
             ) {
-                SatelliteViewMockup()
+                MapViewSection(
+                    latitude = analysis.lat,
+                    longitude = analysis.lon
+                )
 
                 Surface(
                     modifier = Modifier
@@ -491,44 +503,38 @@ fun TrendGraphCard() {
 }
 
 @Composable
-fun SatelliteViewMockup() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val width = size.width
-        val height = size.height
+fun MapViewSection(
+    latitude: Double,
+    longitude: Double
+) {
+    val location = LatLng(latitude, longitude)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(location, 15f)
+    }
 
-        drawRect(color = Color(0xFF3E2723))
-
-        drawRect(
-            color = Color(0xFF2E7D32),
-            topLeft = Offset(0f, 0f),
-            size = Size(width * 0.6f, height)
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        properties = MapProperties(
+            mapType = MapType.SATELLITE,
+            isMyLocationEnabled = false
+        ),
+        uiSettings = MapUiSettings(
+            zoomControlsEnabled = false,
+            compassEnabled = false,
+            myLocationButtonEnabled = false,
+            mapToolbarEnabled = false,
+            scrollGesturesEnabled = true,
+            zoomGesturesEnabled = true,
+            tiltGesturesEnabled = false,
+            rotationGesturesEnabled = false
         )
-        drawRect(
-            color = Color(0xFF558B2F),
-            topLeft = Offset(width * 0.6f, 0f),
-            size = Size(width * 0.4f, height * 0.5f)
+    ) {
+        Marker(
+            state = MarkerState(position = location),
+            title = "Analiz Konumu",
+            snippet = "Lat: ${String.format(Locale.US, "%.4f", latitude)}, Lon: ${String.format(Locale.US, "%.4f", longitude)}"
         )
-        drawRect(
-            color = Color(0xFF8BC34A),
-            topLeft = Offset(width * 0.6f, height * 0.5f),
-            size = Size(width * 0.4f, height * 0.5f)
-        )
-
-        val gridSize = 50.dp.toPx()
-        for (i in 0..10) {
-            drawLine(
-                color = Color.White.copy(alpha = 0.1f),
-                start = Offset(i * gridSize, 0f),
-                end = Offset(i * gridSize, height),
-                strokeWidth = 1f
-            )
-            drawLine(
-                color = Color.White.copy(alpha = 0.1f),
-                start = Offset(0f, i * gridSize),
-                end = Offset(width, i * gridSize),
-                strokeWidth = 1f
-            )
-        }
     }
 }
 

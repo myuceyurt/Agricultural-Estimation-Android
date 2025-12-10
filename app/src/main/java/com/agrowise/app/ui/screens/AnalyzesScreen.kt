@@ -45,12 +45,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.agrowise.app.R
 import com.agrowise.app.data.model.Analysis
 import com.agrowise.app.ui.components.shimmerEffect
 import com.agrowise.app.ui.state.PredictionUiState
 import com.agrowise.app.ui.theme.AgroWiseTheme
 import com.agrowise.app.ui.viewmodel.AnalyzesViewModel
+import com.google.maps.android.BuildConfig
 import kotlinx.coroutines.delay
 
 @Composable
@@ -264,10 +266,19 @@ fun AnalysisCard(
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
+                // Satellite image instead of colored box
+                AsyncImage(
+                    model = "https://maps.googleapis.com/maps/api/staticmap?" +
+                            "center=${analysis.lat},${analysis.lon}" +
+                            "&zoom=16" +
+                            "&size=200x200" +
+                            "&maptype=satellite" +
+                            "&key=${com.agrowise.app.BuildConfig.MAPS_API_KEY}",
+                    contentDescription = "Satellite view of ${analysis.name}",
                     modifier = Modifier
                         .size(60.dp)
-                        .background(Color(analysis.color), RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFE0E0E0))
                 )
 
                 Spacer(modifier = Modifier.width(12.dp))

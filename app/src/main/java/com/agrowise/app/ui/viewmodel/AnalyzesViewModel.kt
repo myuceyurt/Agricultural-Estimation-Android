@@ -37,8 +37,12 @@ class AnalyzesViewModel @Inject constructor(
                         val newAnalysis = mapToAnalysis(apiResponse)
 
                         val currentList = _analyzes.value.toMutableList()
-                        currentList.add(0, newAnalysis)
-                        _analyzes.value = currentList
+                        if (!currentList.any { it.id == newAnalysis.id }) {
+                            currentList.add(0, newAnalysis)
+                            _analyzes.value = currentList
+                        } else {
+                            Log.d("AnalyzesViewModel", "Analysis with id ${newAnalysis.id} already exists, not adding duplicate")
+                        }
 
                         resetState()
                     } else {
@@ -56,14 +60,21 @@ class AnalyzesViewModel @Inject constructor(
     fun fetchAnalyzesById(id: Long) {
         viewModelScope.launch {
             try {
+                if (_analyzes.value.any { it.id == id.toInt() }) {
+                    Log.d("AnalyzesViewModel", "Analysis with id $id already exists, skipping fetch")
+                    return@launch
+                }
+
                 val response = repository.getPredictionById(id)
                 if (response.isSuccessful && response.body() != null) {
                     val apiResponse = response.body()!!
                     val analysis = mapToAnalysis(apiResponse)
 
                     val currentList = _analyzes.value.toMutableList()
-                    currentList.add(0, analysis)
-                    _analyzes.value = currentList
+                    if (!currentList.any { it.id == analysis.id }) {
+                        currentList.add(0, analysis)
+                        _analyzes.value = currentList
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
